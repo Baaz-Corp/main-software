@@ -9,6 +9,7 @@ int dataIn[4] = {0,0,0,0};
 int array_index = 0;
 const int blueLED = 4;
 
+
 void setup() 
 {
   Serial.begin(19200);
@@ -27,12 +28,11 @@ void loop()
     array_index += 1;
   }
 
-
   Serial.print(dataIn[0]);
   Serial.print(", x:");
-  Serial.print(dataIn[1]);
+  Serial.print(dataIn[1]); // X position
   Serial.print(", Y:");
-  Serial.print(dataIn[2]);
+  Serial.print(dataIn[2]); // Y position
   Serial.print(", ");
   Serial.print(Incoming_value);
   Serial.print("\n");
