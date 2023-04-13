@@ -1,4 +1,10 @@
 
+#include "BluetoothSerial.h" 
+
+// init Class:
+BluetoothSerial ESP_BT; 
+
+
 const int trigPin = 5;
 const int echoPin = 18;
 
@@ -11,6 +17,7 @@ float distanceInch;
 
 void setup() {
   Serial.begin(115200); // Starts the serial communication
+  ESP_BT.begin("BAAZ_CORP");
   pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
   pinMode(echoPin, INPUT); // Sets the echoPin as an Input
 }
@@ -31,8 +38,9 @@ void loop() {
   distanceCm = duration * SOUND_SPEED/2;
   
   // Prints the distance in the Serial Monitor
-  Serial.print("Distance (cm): ");
+  //Serial.print("Distance (cm): ");
   Serial.println(distanceCm);
+  ESP_BT.write(distanceCm);
   
   delay(1000);
 }
