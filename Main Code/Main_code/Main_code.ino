@@ -15,6 +15,7 @@ int Incoming_value;             //Incoming byte
 int dataIn[5] = {0,0,0,0,0};      //Array to split the bytes 
 int array_index = 0;            //Indexing through array
 int joystickEnable, joystickX, joystickY;       //X and Y position of the joystick
+float ultrasonicDistance;
 
 //define sound speed in cm/uS
 #define SOUND_SPEED 0.034
@@ -43,6 +44,8 @@ void loop()
   Serial.print(", Y:");
   Serial.print(joystickY);
   Serial.print("\n");
+  ultrasonicDistance = readUltrasonic();
+  ESP_BT.write(ultrasonicDistance);
 }
 
 float readUltrasonic()
