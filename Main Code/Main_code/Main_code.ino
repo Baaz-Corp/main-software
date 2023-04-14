@@ -12,9 +12,10 @@ const int blueLED = 4;
 
 //Variables and constants
 int Incoming_value;             //Incoming byte
-int dataIn[4] = {0,0,0,0};      //Array to split the bytes 
+int dataIn[5] = {0,0,0,0,0};      //Array to split the bytes 
 int array_index = 0;            //Indexing through array
-int joystickX, joystickY;       //X and Y position of the joystick
+int joystickEnable, joystickX, joystickY;       //X and Y position of the joystick
+
 //define sound speed in cm/uS
 #define SOUND_SPEED 0.034
 
@@ -35,6 +36,8 @@ void setup()
 void loop() 
 {
   readBluetoothApp();
+  Serial.print("JoystickEnable:");
+  Serial.print(joystickEnable);
   Serial.print("X:");
   Serial.print(joystickX);
   Serial.print(", Y:");
@@ -74,8 +77,9 @@ void readBluetoothApp()
     array_index += 1;
   }
   //Setting x and y data for interpretation 
-  joystickX = dataIn[1]; 
-  joystickY = dataIn[2];
+  joystickEnable = dataIn[1];
+  joystickX = dataIn[2]; 
+  joystickY = dataIn[3];
 }
 
 
