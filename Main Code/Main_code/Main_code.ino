@@ -23,11 +23,13 @@ float ultrasonicDistance;
 //Function prototypes
 float readUltrasonic(void);
 void readBluetoothApp(void);
+void sendBluetooth(char c, float reading);
+
 
 void setup() 
 {
   Serial.begin(115200); // Starts the serial communication
-  ESP_BT.begin("BAAZ_CORP"); // Enable bluetooth with naming
+  ESP_BT.begin("BlakeH"); // Enable bluetooth with naming
 
   //Set pinmodes
   pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
@@ -36,16 +38,7 @@ void setup()
 
 void loop() 
 {
-  readBluetoothApp();
-  Serial.print("JoystickEnable:");
-  Serial.print(joystickEnable);
-  Serial.print("X:");
-  Serial.print(joystickX);
-  Serial.print(", Y:");
-  Serial.print(joystickY);
-  Serial.print("\n");
-  ultrasonicDistance = readUltrasonic();
-  ESP_BT.write(ultrasonicDistance);
+
 }
 
 float readUltrasonic()
@@ -85,5 +78,9 @@ void readBluetoothApp()
   joystickY = dataIn[3];
 }
 
-
+void sendBluetooth(char c, float reading) // Char value represents which sensor reading G-Gas, A-AirQ, U-Ultrasonic
+{
+  ESP_BT.write(c);
+  ESP_BT.write(reading);
+}
 
