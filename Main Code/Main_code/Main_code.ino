@@ -38,7 +38,8 @@ void setup()
 
 void loop() 
 {
-
+  readBluetoothApp();
+  Serial.println(joystickEnable);
 }
 
 float readUltrasonic()
