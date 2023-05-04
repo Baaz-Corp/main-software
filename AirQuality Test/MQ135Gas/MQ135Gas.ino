@@ -1,6 +1,6 @@
 // Define analog input pin for sensor (change as required)
 #define MQpin (36)
- #define MQpin2 (34)
+#define MQpin2 (34)
 // Variable to store sensor value
 float sensorValue, sensorValue2;
  

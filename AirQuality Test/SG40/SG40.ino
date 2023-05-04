@@ -3,7 +3,7 @@
 
 
 Adafruit_SGP40 sgp;
- int32_t voc_index;
+int32_t voc_index;
 
 
 void setup() {
