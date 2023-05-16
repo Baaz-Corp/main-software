@@ -18,12 +18,15 @@ const int MQpin = 36;
 
 //Variables and constants
 int Incoming_value;             //Incoming byte
-int dataIn[5] = {0,0,0,0,0};      //Array to split the bytes 
+int dataIn[7] = {0,0,0,0,0,0,0};      //Array to split the bytes 
 int array_index = 0;            //Indexing through array
 int joystickEnable, joystickX, joystickY;       //X and Y position of the joystick
 float ultrasonicDistance;
 int32_t voc_index;
 float gasReading;
+
+float angle = 0;
+int turnEnable;
 //define sound speed in cm/uS
 #define SOUND_SPEED 0.034
 
@@ -32,7 +35,7 @@ float readUltrasonic(void);
 void readVOCIndex(void);
 void readBluetoothApp(void);
 void sendBluetooth(char c, float reading);
-
+void printBluetooth(void);
 
 void setup() 
 {
@@ -56,12 +59,8 @@ void setup()
 
 void loop() 
 {
-  gasReading = analogRead(MQpin);
-
-  Serial.print("Gas Reading: ");
-  Serial.println(gasReading);
-
-  delay(1000);
+  readBluetoothApp();
+  printBluetooth();
 }
 
 float readUltrasonic()
@@ -99,6 +98,9 @@ void readBluetoothApp()
   joystickEnable = dataIn[1];
   joystickX = dataIn[2]; 
   joystickY = dataIn[3];
+  if(dataIn[4] == 1) turnEnable = 1;
+  angle = dataIn[5];
+  Serial.println(angle);
 }
 
 void sendBluetooth(char c, float reading) // Char value represents which sensor reading G-Gas, A-AirQ, U-Ultrasonic
@@ -107,6 +109,24 @@ void sendBluetooth(char c, float reading) // Char value represents which sensor 
   ESP_BT.write(reading);
 }
 
+void printBluetooth()
+{
+  Serial.print(" Joystick Enable: ");
+  Serial.print(joystickEnable);
+  
+  Serial.print(" Joystick X: ");
+  Serial.print(joystickX);
+  
+  Serial.print(" Joystick Y: ");
+  Serial.print(joystickY);
+
+  Serial.print(" Turn? ");
+  Serial.print(turnEnable);
+
+  Serial.print(" Angle: ");
+  Serial.println(angle);
+
+}
 void readVOCIndex()
 {
   voc_index = sgp.measureVocIndex();
