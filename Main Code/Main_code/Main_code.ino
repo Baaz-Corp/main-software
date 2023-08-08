@@ -36,6 +36,7 @@ void readVOCIndex(void);
 void readBluetoothApp(void);
 void sendBluetooth(char c, float reading);
 void printBluetooth(void);
+void bluetoothMode(void); //Change into different functions based on which page of the app is open
 
 void setup() 
 {
@@ -59,10 +60,25 @@ void setup()
 
 void loop() 
 {
-  readBluetoothApp();
-  printBluetooth();
+  bluetoothMode();
 }
-
+void bluetoothMode()  //Change into different functions based on which page of the app is open
+{
+   if (ESP_BT.available()) 
+  {
+    Incoming_value = ESP_BT.read(); //Read what we receive 
+    if(Incoming_value == 2) 
+    {
+      Serial.println("Connect")
+      Incoming_value = 0;
+    }
+    else if(Incoming_value == 3)
+    {
+      Serial.println("Dev")
+      Incoming_value = 0;
+    }
+  }
+}
 float readUltrasonic()
 {
   long duration;
