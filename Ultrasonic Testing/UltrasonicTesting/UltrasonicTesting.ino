@@ -5,8 +5,8 @@
 BluetoothSerial ESP_BT; 
 
 
-const int trigPin = 5;
-const int echoPin = 18;
+const int trigPin = 27;
+const int echoPin = 23;
 
 //define sound speed in cm/uS
 #define SOUND_SPEED 0.034
@@ -40,7 +40,7 @@ void loop() {
   // Prints the distance in the Serial Monitor
   //Serial.print("Distance (cm): ");
   Serial.println(distanceCm);
-  ESP_BT.write(distanceCm);
+ // ESP_BT.write(distanceCm);
   
   delay(1000);
 }
