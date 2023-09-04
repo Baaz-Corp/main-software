@@ -1,7 +1,8 @@
 #include "BluetoothSerial.h" 
 #include <Wire.h>
 #include "Adafruit_SGP40.h"
-
+#define lidarDebugSerial Serial
+#include "thijs_rplidar.h"
 // init Class:
 BluetoothSerial ESP_BT;
 Adafruit_SGP40 sgp;
@@ -40,7 +41,58 @@ void sendBluetooth(char c, float reading);
 void printBluetooth(void);
 void bluetoothMode(void); //Change into different functions based on which page of the app is open
 void connectPageBluetooth(void);
+void sendLidarBT(float, float);
 
+// LIDAR STUFF (THIJSES EXAMPLE)--------------------------------------------------------------------------
+struct lidarMotorHandler {  // not really needed (and (currently) very ESP32-bound) but somewhat futureproof
+  const uint8_t pin;
+  const uint32_t freq; //Hz
+  //const uint8_t res; //bits (commented because i want to keep this thing simple, and changing variable sizes (templates?) is not
+  const uint8_t channel; // an ESP32 ledc specific thing
+  const bool activeHigh; // depends on your specific hardware setup (CTRL_MOTO should be driven to the same voltage as 5V_MOTO (which can range from 5 to 9V), i think)
+  lidarMotorHandler(const uint8_t pin, const bool activeHigh=true, const uint32_t freq=500, /*const uint8_t res=8,*/ const uint8_t channel=0) : 
+                    pin(pin), freq(freq), /*res(res),*/ channel(channel), activeHigh(activeHigh) {}
+  void init() {
+    ledcSetup(channel, freq, 8);
+    ledcAttachPin(pin, channel);
+    setPWM(0);
+  }
+  inline void setPWM(uint8_t newPWMval) {ledcWrite(channel, activeHigh ? newPWMval : (255-newPWMval));}
+};
+
+lidarMotorHandler motorHandler(27);
+RPlidar lidar(Serial2);
+
+bool keepSpinning = true;
+//uint16_t debugPrintCounter = 0;
+//const uint16_t debugPrintThreshold = 48; // print data every (this many) datapoints (if you are getting CRC errors, there may be buffer overflow, try setting this to like 48+ (or uncommenting printing entirely))
+uint32_t debugPrintTimer;
+const uint32_t dubugPrintInterval = 5000; // micros between prints
+
+void dataHandler(RPlidar* lidarPtr, uint16_t dist, uint16_t angle_q6, uint8_t newRotFlag, int8_t quality) {
+  float distFloat = dist; // unit is mm directly
+  float angleDegreesFloat = angle_q6 * 0.015625; // angle comes in 'q6' format, so divide by (1<<6)=64 (or multiply by 1/64) (or bitshift to the right by 6) to get angle in degrees
+  // alternatively, you could use bitshifting to divide the angleDegreesFloat slightly faster. Something like:
+//  float angleDegreesFloat = angle_q6;   angleDegreesFloat = (float&)(((uint32_t&)angleDegreesFloat)-=(((uint32_t)6)<<23)); // subtract 6 from the float's exponent, thereby dividing it by 2^6=64
+//
+//  debugPrintCounter++;
+//  if(debugPrintCounter >= debugPrintThreshold) {  // (debugPrintCounter >= (lidarPtr->lidarSerial.available())) {  // dynamic?
+//    debugPrintCounter = 0;
+  if((micros()-debugPrintTimer) >= dubugPrintInterval) {  // (debugPrintCounter >= (lidarPtr->lidarSerial.available())) {  // dynamic?
+    debugPrintTimer = micros();
+    //// printing all the data is too slow (there's too much data), so this may cause packet loss (due to buffer overflow).
+    //Serial.println(lidarPtr->lidarSerial.available());
+    //Serial.print("DH: "); Serial.print(dist); Serial.print("  \t"); Serial.print(angle_q6); Serial.print('\t'); Serial.print(newRotFlag); Serial.print('\t'); Serial.println(quality);
+    String dataToPrint = String(millis()) + '\t';
+    dataToPrint += String(dist) + "  \t" + String(angle_q6);
+    dataToPrint += '\t' + String(lidarPtr->packetCount) + '\t' + String(lidarPtr->rotationCount);
+    dataToPrint += '\t' + String(newRotFlag) + '\t' + String(quality);
+    dataToPrint += '\t' + String(lidarPtr->rawAnglePerMillisecond()) + '\t' + String(lidarPtr->RPM());
+    Serial.println(dataToPrint);
+    sendLidarBT(dist, angle/64);
+  }
+}
+//---------------------------------------------------------------------------------------------------------------------
 void setup() 
 {
   Serial.begin(115200); // Starts the serial communication
@@ -59,11 +111,53 @@ void setup()
   Serial.print(sgp.serialnumber[0], HEX);
   Serial.print(sgp.serialnumber[1], HEX);
   Serial.println(sgp.serialnumber[2], HEX);
+
+  //LIDAR STUFF------------------------------------------------------------------------------------------------------
+    motorHandler.init();
+
+  lidar.init(16, 17);
+  lidar.postParseCallback = dataHandler; // set dat handler function
+
+  lidar.printLidarInfo();
+//  lidar.printLidarHealth();
+//  lidar.printLidarSamplerate();
+//  lidar.printLidarConfig();
+  Serial.println();
+
+  if(!lidar.connectionCheck()) { Serial.println("connectionCheck() failed"); while(1) {} }
+
+  delay(10);
+  motorHandler.setPWM(200);
+  //bool startSuccess = lidar.startStandardScan();
+  //bool startSuccess = lidar.startExpressScan(EXPRESS_SCAN_WORKING_MODE_LEGACY);
+  bool startSuccess = lidar.startExpressScan(EXPRESS_SCAN_WORKING_MODE_BOOST);
+//  Serial.print("startSuccess: "); Serial.println(startSuccess);
+//------------------------------------------------------------------------------------------------------------------
 }
 
 void loop() 
 {
   bluetoothMode();
+
+  // LIDAR STUFF ---------------------------------------------------------------------------------------------------
+//  if(Serial.available()) { lidar.lidarSerial.write(Serial.read()); }
+//  if(lidar.lidarSerial.available()) { Serial.write(lidar.lidarSerial.read()); }
+//  if(millis() >= 5000) { motorHandler.setPWM(0); while(1) {} }
+  
+  if(keepSpinning) {
+    uint32_t extraSpeedTimer = micros();
+    int8_t datapointsProcessed = lidar.handleData(false, false); // read lidar data and send it to the callback function. Parameters are: (includeInvalidMeasurements, waitForChecksum)
+    // includeInvalidMeasurements means sending data where the measurement failed (out of range or too close or bad surface, etc. it's when distance == 0)
+    // waitForChecksum (only applies to express scans) means whether you wait for the whole packet to come, or to process data as it comes in (checksum is still checked when the whole packet is there, but the bad data may have already been sent to the callback)
+//    extraSpeedTimer = micros() - extraSpeedTimer;
+//    if(extraSpeedTimer > 40) { Serial.println(extraSpeedTimer); }
+
+    if(datapointsProcessed < 0) { keepSpinning = false; lidar.stopScan(); } // handleData() returns -1 if it encounters an error
+    //if(lidar.packetCount >= 200) { keepSpinning = false; lidar.stopScan(); }  // stop scanning after a while
+  } else {
+    motorHandler.setPWM(0);
+  }
+  //----------------------------------------------------------------------------------------------------------------
 }
 
 void connectPageBluetooth() //Whats happening on the connect page
@@ -155,10 +249,16 @@ void devPageBluetooth()
   Serial.println(angle);
 }
 
-void sendBluetooth(char c, float reading) // Char value represents which sensor reading G-Gas, A-AirQ, U-Ultrasonic
+void sendBluetooth(char c, float reading) // Char value represents which sensor reading G-Gas, A-AirQ, U-Ultrasonic, L-Lidar
 {
   ESP_BT.write(c);
   ESP_BT.write(reading);
+}
+
+void sendLidarBT(float x, float theta)
+{
+  ESP_BT.write(x);
+  ESP_BT.write(theta);
 }
 
 void printBluetooth()
