@@ -42,6 +42,7 @@ void printBluetooth(void);
 void bluetoothMode(void); //Change into different functions based on which page of the app is open
 void connectPageBluetooth(void);
 void sendLidarBT(float, float);
+void polarToCart(float dst, float ang);
 
 // LIDAR STUFF (THIJSES EXAMPLE)--------------------------------------------------------------------------
 struct lidarMotorHandler {  // not really needed (and (currently) very ESP32-bound) but somewhat futureproof
@@ -88,8 +89,9 @@ void dataHandler(RPlidar* lidarPtr, uint16_t dist, uint16_t angle_q6, uint8_t ne
     dataToPrint += '\t' + String(lidarPtr->packetCount) + '\t' + String(lidarPtr->rotationCount);
     dataToPrint += '\t' + String(newRotFlag) + '\t' + String(quality);
     dataToPrint += '\t' + String(lidarPtr->rawAnglePerMillisecond()) + '\t' + String(lidarPtr->RPM());
-    Serial.println(dataToPrint);
-    sendLidarBT(dist, angle/64);
+//    Serial.println(dataToPrint);
+//    sendLidarBT(dist, angleDegreesFloat); // Send polar coordinates to app
+    polarToCart(dist, angleDegreesFloat); // Convert to cartesian coordinates on x, y plane
   }
 }
 //---------------------------------------------------------------------------------------------------------------------
@@ -255,7 +257,7 @@ void sendBluetooth(char c, float reading) // Char value represents which sensor 
   ESP_BT.write(reading);
 }
 
-void sendLidarBT(float x, float theta)
+void sendLidarBT(float x, float theta) // Send distance x and angle theta to Bluetooth app
 {
   ESP_BT.write(x);
   ESP_BT.write(theta);
@@ -282,4 +284,21 @@ void printBluetooth()
 void readVOCIndex()
 {
   voc_index = sgp.measureVocIndex();
+}
+
+void polarToCart(float dst, float ang) // Convert polar coordinates to rect/cartesian w/ roomba as origin. ang = degrees
+{
+  float ang_rad = ang * (3.1415 / 180.00);
+  float x_coord;
+  float y_coord;
+  
+  x_coord = dst * cos(ang_rad);
+  y_coord = dst * sin(ang_rad);  
+  Serial.println(ang);
+  Serial.println(dst);  
+  Serial.print(" x :");
+  Serial.println(x_coord);
+  Serial.print(" y :");
+  Serial.println(y_coord);
+  Serial.println();
 }
