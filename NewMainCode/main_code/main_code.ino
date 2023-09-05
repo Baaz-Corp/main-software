@@ -27,6 +27,8 @@ int32_t voc_index;
 float gasReading;
 int batteryPercentage = 100;  //Represents the roombas batter
 int storagePercentage = 0;        //represents how full the trash is
+unsigned int dataTrim = 0;    // Index for trimming data
+float rectCoord[2];           // Array containing one rectangular coordinate
 
 float angle = 0;
 int turnEnable;
@@ -89,9 +91,20 @@ void dataHandler(RPlidar* lidarPtr, uint16_t dist, uint16_t angle_q6, uint8_t ne
     dataToPrint += '\t' + String(lidarPtr->packetCount) + '\t' + String(lidarPtr->rotationCount);
     dataToPrint += '\t' + String(newRotFlag) + '\t' + String(quality);
     dataToPrint += '\t' + String(lidarPtr->rawAnglePerMillisecond()) + '\t' + String(lidarPtr->RPM());
-//    Serial.println(dataToPrint);
-//    sendLidarBT(dist, angleDegreesFloat); // Send polar coordinates to app
-    polarToCart(dist, angleDegreesFloat); // Convert to cartesian coordinates on x, y plane
+//    Serial.println(dataToPrint);  // Default printing from example
+
+    switch (dataTrim)
+    {
+      case 0:       polarToCart(dist, angle);       // Convert to cartesian
+                    sendLidarBT(rectCoord[0], rectCoord[1]);    // Send cartesioan coordianates to app
+                    //    sendLidarBT(dist, angleDegreesFloat); // Send polar coordinates to app
+                    dataTrim++; 
+                    break;
+      case 3:       dataTrim = 0;
+                    break;
+      default:      dataTrim++; 
+                    break;
+    }
   }
 }
 //---------------------------------------------------------------------------------------------------------------------
@@ -126,7 +139,11 @@ void setup()
 //  lidar.printLidarConfig();
   Serial.println();
 
-  if(!lidar.connectionCheck()) { Serial.println("connectionCheck() failed"); while(1) {} }
+  if(!lidar.connectionCheck()) 
+  { 
+    Serial.println("connectionCheck() failed");
+//    while(1) {} 
+    }
 
   delay(10);
   motorHandler.setPWM(200);
@@ -289,16 +306,19 @@ void readVOCIndex()
 void polarToCart(float dst, float ang) // Convert polar coordinates to rect/cartesian w/ roomba as origin. ang = degrees
 {
   float ang_rad = ang * (3.1415 / 180.00);
-  float x_coord;
-  float y_coord;
-  
-  x_coord = dst * cos(ang_rad);
-  y_coord = dst * sin(ang_rad);  
-  Serial.println(ang);
-  Serial.println(dst);  
-  Serial.print(" x :");
-  Serial.println(x_coord);
-  Serial.print(" y :");
-  Serial.println(y_coord);
-  Serial.println();
+//  float x_coord;
+//  float y_coord;
+
+  rectCoord[0] = dst * cos(ang_rad);
+  rectCoord[1] = dst * sin(ang_rad);  
+//  x_coord = dst * cos(ang_rad);
+//  y_coord = dst * sin(ang_rad);  
+//  Serial.println(ang);
+//  Serial.println(dst);  
+//  Serial.print(" x :");
+//  Serial.println(x_coord);
+//  Serial.print(" y :");
+//  Serial.println(y_coord);
+//  Serial.println();
+
 }
