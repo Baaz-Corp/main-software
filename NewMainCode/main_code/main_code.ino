@@ -95,7 +95,7 @@ void dataHandler(RPlidar* lidarPtr, uint16_t dist, uint16_t angle_q6, uint8_t ne
 
     switch (dataTrim)
     {
-      case 0:       polarToCart(dist, angle);       // Convert to cartesian
+      case 0:       polarToCart(dist/1000, angle);       // Convert to cartesian
                     sendLidarBT(rectCoord[0], rectCoord[1]);    // Send cartesioan coordianates to app
                     //    sendLidarBT(dist, angleDegreesFloat); // Send polar coordinates to app
                     dataTrim++; 
