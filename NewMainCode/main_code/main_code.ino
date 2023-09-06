@@ -1,3 +1,5 @@
+#include <thijs_rplidar.h>
+
 #include "BluetoothSerial.h" 
 #include <Wire.h>
 #include "Adafruit_SGP40.h"
@@ -28,7 +30,8 @@ float gasReading;
 int batteryPercentage = 100;  //Represents the roombas batter
 int storagePercentage = 0;        //represents how full the trash is
 unsigned int dataTrim = 0;    // Index for trimming data
-float rectCoord[2];           // Array containing one rectangular coordinate
+int rectCoord[2];           // Array containing one rectangular coordinate
+float dist_use = 0;
 
 float angle = 0;
 int turnEnable;
@@ -92,10 +95,16 @@ void dataHandler(RPlidar* lidarPtr, uint16_t dist, uint16_t angle_q6, uint8_t ne
     dataToPrint += '\t' + String(newRotFlag) + '\t' + String(quality);
     dataToPrint += '\t' + String(lidarPtr->rawAnglePerMillisecond()) + '\t' + String(lidarPtr->RPM());
 //    Serial.println(dataToPrint);  // Default printing from example
+    dist_use = distFloat/48;  
 
+
+  sendLidarBT(rectCoord[0], rectCoord[1]);    // Send cartesian coordianates to app
+  //    sendLidarBT(dist, angleDegreesFloat); // Send polar coordinates to app
     switch (dataTrim)
     {
-      case 0:       polarToCart(dist/10, angleDegreesFloat);       // Convert to cartesian
+      case 0:         dist_use = distFloat/48;
+                      if (dist_use > 125) dist_use = 125;  
+                      polarToCart(dist_use, angleDegreesFloat);       // Convert to cartesian
 //                    Serial.print("dist ");
 //                    Serial.println(dist);
 //                    Serial.print("ang ");
@@ -321,8 +330,8 @@ void polarToCart(float dst, float ang) // Convert polar coordinates to rect/cart
 //  float x_coord;
 //  float y_coord;
 
-  rectCoord[0] = dst * cos(ang_rad);
-  rectCoord[1] = dst * sin(ang_rad);  
+  rectCoord[0] = (dst * cos(ang_rad)) + 125;
+  rectCoord[1] = (dst * sin(ang_rad)) + 125;  
 //  x_coord = dst * cos(ang_rad);
 //  y_coord = dst * sin(ang_rad);  
 //  Serial.println(ang);
