@@ -95,10 +95,19 @@ void dataHandler(RPlidar* lidarPtr, uint16_t dist, uint16_t angle_q6, uint8_t ne
 
     switch (dataTrim)
     {
-      case 0:       polarToCart(dist/1000, angle);       // Convert to cartesian
-                    sendLidarBT(rectCoord[0], rectCoord[1]);    // Send cartesioan coordianates to app
+      case 0:       polarToCart(dist/10, angleDegreesFloat);       // Convert to cartesian
+//                    Serial.print("dist ");
+//                    Serial.println(dist);
+//                    Serial.print("ang ");
+//                    Serial.println(angleDegreesFloat);
+
+                    sendLidarBT(rectCoord[0], rectCoord[1]);    // Send cartesian coordianates to app
                     //    sendLidarBT(dist, angleDegreesFloat); // Send polar coordinates to app
-                    dataTrim++; 
+                      Serial.print("x ");
+                      Serial.println(rectCoord[0]);
+                      Serial.print("y ");
+                      Serial.println(rectCoord[1]);
+                      dataTrim++; 
                     break;
       case 3:       dataTrim = 0;
                     break;
@@ -111,7 +120,7 @@ void dataHandler(RPlidar* lidarPtr, uint16_t dist, uint16_t angle_q6, uint8_t ne
 void setup() 
 {
   Serial.begin(115200); // Starts the serial communication
-  ESP_BT.begin("BlakeH"); // Enable bluetooth with naming
+  ESP_BT.begin("ZaneH"); // Enable bluetooth with naming
 
   //Set pinmodes
   pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
@@ -156,8 +165,9 @@ void setup()
 
 void loop() 
 {
-  bluetoothMode();
+ // bluetoothMode();
 
+        
   // LIDAR STUFF ---------------------------------------------------------------------------------------------------
 //  if(Serial.available()) { lidar.lidarSerial.write(Serial.read()); }
 //  if(lidar.lidarSerial.available()) { Serial.write(lidar.lidarSerial.read()); }
@@ -175,7 +185,9 @@ void loop()
     //if(lidar.packetCount >= 200) { keepSpinning = false; lidar.stopScan(); }  // stop scanning after a while
   } else {
     motorHandler.setPWM(0);
+
   }
+
   //----------------------------------------------------------------------------------------------------------------
 }
 
