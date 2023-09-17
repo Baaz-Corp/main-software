@@ -1,5 +1,3 @@
-#include <thijs_rplidar.h>
-
 #include "BluetoothSerial.h" 
 #include <Wire.h>
 #include "Adafruit_SGP40.h"
@@ -32,20 +30,23 @@ int storagePercentage = 0;        //represents how full the trash is
 unsigned int dataTrim = 0;    // Index for trimming data
 int rectCoord[2];           // Array containing one rectangular coordinate
 float dist_use = 0;
-
+char breakVariable;
 float angle = 0;
 int turnEnable;
+int pageOpen;
 //define sound speed in cm/uS
 #define SOUND_SPEED 0.034
 
 //Function prototypes
 float readUltrasonic(void);
 void readVOCIndex(void);
-void devPageBluetooth(void);
 void sendBluetooth(char c, float reading);
 void printBluetooth(void);
 void bluetoothMode(void); //Change into different functions based on which page of the app is open
 void connectPageBluetooth(void);
+void mappingPageBluetooth(void);
+void devPageBluetooth(void);
+void checkPageUpdate(void);
 void sendLidarBT(float, float);
 void polarToCart(float dst, float ang);
 
@@ -129,7 +130,7 @@ void dataHandler(RPlidar* lidarPtr, uint16_t dist, uint16_t angle_q6, uint8_t ne
 void setup() 
 {
   Serial.begin(115200); // Starts the serial communication
-  ESP_BT.begin("ZaneH"); // Enable bluetooth with naming
+  ESP_BT.begin("BlakeH"); // Enable bluetooth with naming
 
   //Set pinmodes
   pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
@@ -174,37 +175,21 @@ void setup()
 
 void loop() 
 {
- // bluetoothMode();
-
-        
-  // LIDAR STUFF ---------------------------------------------------------------------------------------------------
-//  if(Serial.available()) { lidar.lidarSerial.write(Serial.read()); }
-//  if(lidar.lidarSerial.available()) { Serial.write(lidar.lidarSerial.read()); }
-//  if(millis() >= 5000) { motorHandler.setPWM(0); while(1) {} }
-  
-  if(keepSpinning) {
-    uint32_t extraSpeedTimer = micros();
-    int8_t datapointsProcessed = lidar.handleData(false, false); // read lidar data and send it to the callback function. Parameters are: (includeInvalidMeasurements, waitForChecksum)
-    // includeInvalidMeasurements means sending data where the measurement failed (out of range or too close or bad surface, etc. it's when distance == 0)
-    // waitForChecksum (only applies to express scans) means whether you wait for the whole packet to come, or to process data as it comes in (checksum is still checked when the whole packet is there, but the bad data may have already been sent to the callback)
-//    extraSpeedTimer = micros() - extraSpeedTimer;
-//    if(extraSpeedTimer > 40) { Serial.println(extraSpeedTimer); }
-
-    if(datapointsProcessed < 0) { keepSpinning = false; lidar.stopScan(); } // handleData() returns -1 if it encounters an error
-    //if(lidar.packetCount >= 200) { keepSpinning = false; lidar.stopScan(); }  // stop scanning after a while
-  } else {
-    motorHandler.setPWM(0);
-
-  }
-
-  //----------------------------------------------------------------------------------------------------------------
+  bluetoothMode();
 }
 
 void connectPageBluetooth() //Whats happening on the connect page
 {
+  bool carryOn = true;
   int x = 0; //used as a counter to delay incrementation
-  while(1)  //This should be change to while incoming bt char is not 3
+  while(carryOn)  //This should be change to while incoming bt char is not 3
   {
+    Incoming_value = ESP_BT.read(); //Read what we receive 
+    if(Incoming_value == 4 || Incoming_value == 3 || Incoming_value == 2)
+    {
+      pageOpen = Incoming_value;
+      carryOn = false;
+    } 
     readVOCIndex();
     sendBluetooth('A', voc_index);
     Serial.print("VOC_INDEX: ");
@@ -230,24 +215,89 @@ void connectPageBluetooth() //Whats happening on the connect page
   }
 }
 
+void mappingPageBluetooth()
+{
+  bool carryOn = true;
+  while(carryOn) // change to not equal to different page value
+  {
+    Incoming_value = ESP_BT.read(); //Read what we receive 
+    if(Incoming_value == 4 || Incoming_value == 3 || Incoming_value == 2)
+    {
+      pageOpen = Incoming_value;
+      carryOn = false;
+    } 
+
+    // LIDAR STUFF ---------------------------------------------------------------------------------------------------
+    //  if(Serial.available()) { lidar.lidarSerial.write(Serial.read()); }
+    //  if(lidar.lidarSerial.available()) { Serial.write(lidar.lidarSerial.read()); }
+    //  if(millis() >= 5000) { motorHandler.setPWM(0); while(1) {} }
+  
+    if(keepSpinning) 
+    {
+      uint32_t extraSpeedTimer = micros();
+      int8_t datapointsProcessed = lidar.handleData(false, false); // read lidar data and send it to the callback function. Parameters are: (includeInvalidMeasurements, waitForChecksum)
+      // includeInvalidMeasurements means sending data where the measurement failed (out of range or too close or bad surface, etc. it's when distance == 0)
+      // waitForChecksum (only applies to express scans) means whether you wait for the whole packet to come, or to process data as it comes in (checksum is still checked when the whole packet is there, but the bad data may have already been sent to the callback)
+      //    extraSpeedTimer = micros() - extraSpeedTimer;
+      //    if(extraSpeedTimer > 40) { Serial.println(extraSpeedTimer); }
+
+      if(datapointsProcessed < 0) { keepSpinning = false; lidar.stopScan(); } // handleData() returns -1 if it encounters an error
+      //if(lidar.packetCount >= 200) { keepSpinning = false; lidar.stopScan(); }  // stop scanning after a while
+    } 
+    else 
+    {
+      motorHandler.setPWM(0);
+    }
+  }
+}
+
+void devPageBluetooth()
+{
+  while(1) // change
+  {
+    if (ESP_BT.available()) 
+    {
+      Incoming_value = ESP_BT.read(); //Read what we receive 
+      if(Incoming_value == (255)) array_index = 0;
+      dataIn[array_index] = Incoming_value;
+      array_index += 1;
+    }
+    //Setting x and y data for interpretation 
+    joystickEnable = dataIn[1];
+    joystickX = dataIn[2]; 
+    joystickY = dataIn[3];
+    if(dataIn[4] == 1) turnEnable = 1;
+    angle = dataIn[5];
+    Serial.println(angle);
+  }
+}
 
 void bluetoothMode()  //Change into different functions based on which page of the app is open
 {
    if (ESP_BT.available()) 
   {
     Incoming_value = ESP_BT.read(); //Read what we receive 
-    if(Incoming_value == 2)         //If 2 is sent then the connect page is initialised
+  }
+
+  if(Incoming_value == 2 || pageOpen == 2)         //If 2 is sent then the connect page is initialised
     {
       Serial.println("Connect");
       Incoming_value = 0;
       connectPageBluetooth();
     }
-    else if(Incoming_value == 3)    //If 3 is sent then
+    else if(Incoming_value == 3 || pageOpen == 3)    //If 3 is sent then
     {
       Serial.println("Dev");
       Incoming_value = 0;
+      devPageBluetooth();
     }
-  }
+    else if(Incoming_value == 4 || pageOpen == 4)    //If 4 is sent then
+    {
+      Serial.println("Mapping");
+      Incoming_value = 0;
+      mappingPageBluetooth();
+    }
+  
 }
 float readUltrasonic()
 {
@@ -269,24 +319,6 @@ float readUltrasonic()
   distanceCm = duration * SOUND_SPEED/2;
 
   return distanceCm; // Returns the distance in cm
-}
-
-void devPageBluetooth()
-{
-  if (ESP_BT.available()) 
-  {
-    Incoming_value = ESP_BT.read(); //Read what we receive 
-    if(Incoming_value == (255)) array_index = 0;
-    dataIn[array_index] = Incoming_value;
-    array_index += 1;
-  }
-  //Setting x and y data for interpretation 
-  joystickEnable = dataIn[1];
-  joystickX = dataIn[2]; 
-  joystickY = dataIn[3];
-  if(dataIn[4] == 1) turnEnable = 1;
-  angle = dataIn[5];
-  Serial.println(angle);
 }
 
 void sendBluetooth(char c, float reading) // Char value represents which sensor reading G-Gas, A-AirQ, U-Ultrasonic, L-Lidar
