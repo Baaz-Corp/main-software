@@ -184,12 +184,22 @@ void connectPageBluetooth() //Whats happening on the connect page
   int x = 0; //used as a counter to delay incrementation
   while(carryOn)  //This should be change to while incoming bt char is not 3
   {
+    
     Incoming_value = ESP_BT.read(); //Read what we receive 
     if(Incoming_value == 4 || Incoming_value == 3 || Incoming_value == 2)
     {
       pageOpen = Incoming_value;
       carryOn = false;
     } 
+    else if(Incoming_value == 5) //Start cleaning has been pressed
+    {
+      Serial.println("cleaning starting");
+        //call function to start cleaning
+    }
+    else if(Incoming_value == 6) //Stop cleaning has been pressed
+    {
+      
+    }
     readVOCIndex();
     sendBluetooth('A', voc_index);
     Serial.print("VOC_INDEX: ");
@@ -201,7 +211,7 @@ void connectPageBluetooth() //Whats happening on the connect page
       if(batteryPercentage == 1) batteryPercentage = 100;
       sendBluetooth('B', batteryPercentage);
       Serial.print("Battery Percentage: ");
-      Serial.println(batteryPercentage);
+      //Serial.println(batteryPercentage);
     }
         if(x == 70)
     {
