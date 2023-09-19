@@ -40,12 +40,18 @@ int lm_set_flag_100ms;
 int rm_set_flag_100ms;
 
 // Lidar stuff -----------------------------
-float distFloat = 0;
+int distFloat = 0;
 float angleDegreesFloat = 0;
-float *dist_p = &distFloat;
+//float *dist_p = &distFloat;
+//float *angle_p = &angleDegreesFloat;
+
+int *dist_p = &distFloat;
 float *angle_p = &angleDegreesFloat;
 // -----------------------------------------
 
+//-- Stopping using PID
+int wait_360 = 0;   //-- checks around before move forward
+int turn_count = 0;
 
 
 int drive_or_turn = 1;  // 0 nothing, 1 drive, 2 turn
@@ -88,14 +94,20 @@ void readEncoder() //this function is triggered by the encoder CHANGE, and incre
 
 { 
   lm_counts++; //left motor encoder count increment
-  angle_count_lm++;
+  if(drive_or_turn == 2)
+  {
+    angle_count_lm++;
+  }
 }
 
 void readEncoder1() //this function is triggered by the encoder CHANGE, and increments the encoder counter
 
 { 
   rm_counts++; //right motor encoder count increment
-  angle_count_rm++;
+  if(drive_or_turn == 2)
+  {
+    angle_count_rm++;
+  }
 }
 
 // sampling isr which happens every 100ms
@@ -110,7 +122,7 @@ void IRAM_ATTR Timer0_ISR() //-- happens every 100ms
     lm_c = lm_counts;
 
     if(setPoint < max_set && drive_or_turn != 0) setPoint += 5;
-    else if (setPoint > max_set) setPoint -= 5;
+    
 
     rm_counts = 0; //-- reset counts
     lm_counts = 0;
@@ -142,6 +154,7 @@ void left_speed(int speed_, int dir_) {
   if (dir_ == 1) {
     analogWrite(LM_F, speed_);
     digitalWrite(LM_R, 0);
+    Serial.println("hi");
   }
   if (dir_ == -1) {
     analogWrite(LM_R, speed_);
@@ -173,14 +186,17 @@ void PID_control_lm(int m_dir)
 
     lm_motor_set = L_kp*lm_error + L_ki*lm_integral + L_kd*lm_derivative;   // Changing left motors set speed
 
-    if (lm_motor_set <=0)
+    if (lm_motor_set <=0 || setPoint == 0)
     {
+      lm_motor_set = 0;
+      lm_integral = 0;
+      lm_error = 0;
       lm_motor_set = 0;
     }
     
     else if (lm_motor_set > 255) lm_motor_set = 255;
-    
-    //Serial.println(lm_c);
+
+   
     
     left_speed(lm_motor_set, m_dir); 
     
@@ -199,15 +215,16 @@ void PID_control_rm(int m_dir)
 
     rm_motor_set = R_kp*rm_error + R_ki*rm_integral + R_kd*rm_derivative;   // Changing left motors set speed
 
-    if (rm_motor_set <=0)
+    if (rm_motor_set <=0 || setPoint == 0)
     {
       rm_motor_set = 0;
+      rm_integral = 0;
+      rm_error = 0;
+      rm_derivative = 0;
     }
     
     else if (rm_motor_set > 255) rm_motor_set = 255;
     
-    Serial.println(rm_c);
-    Serial.println("======");
     
     right_speed(rm_motor_set, m_dir); 
     
@@ -215,27 +232,6 @@ void PID_control_rm(int m_dir)
   }  
 }
 
-void turn_to_angle(int angle)
-{
-  // clear encoder angle counters
-  angle_count_lm = 0;
-  angle_count_lm = 0;
-
-  drive_or_turn = 0;
-  delay(2000);
-
-  drive_or_turn = 2;
-
-  lm_direction = -1;
-  rm_direction = 1;
-  
-  while ((angle_count_lm <= (angle * 17.5))) {
-    // gone 360 degrees
-    delay(1);
-  }
-  right_speed(0, 1);
-  left_speed(0, -1);
-}
 
 // -- lidar stuff -----------------------------------------------
 struct lidarMotorHandler {  // not really needed (and (currently) very ESP32-bound) but somewhat futureproof
@@ -272,18 +268,18 @@ void dataHandler(RPlidar* lidarPtr, uint16_t dist, uint16_t angle_q6, uint8_t ne
 //  debugPrintCounter++;
 //  if(debugPrintCounter >= debugPrintThreshold) {  // (debugPrintCounter >= (lidarPtr->lidarSerial.available())) {  // dynamic?
 //    debugPrintCounter = 0;
-  if((micros()-debugPrintTimer) >= dubugPrintInterval) {  // (debugPrintCounter >= (lidarPtr->lidarSerial.available())) {  // dynamic?
-    debugPrintTimer = micros();
+//  if((micros()-debugPrintTimer) >= dubugPrintInterval) {  // (debugPrintCounter >= (lidarPtr->lidarSerial.available())) {  // dynamic?
+//    debugPrintTimer = micros();
     //// printing all the data is too slow (there's too much data), so this may cause packet loss (due to buffer overflow).
     //Serial.println(lidarPtr->lidarSerial.available());
     //Serial.print("DH: "); Serial.print(dist); Serial.print("  \t"); Serial.print(angle_q6); Serial.print('\t'); Serial.print(newRotFlag); Serial.print('\t'); Serial.println(quality);
-    String dataToPrint = String(millis()) + '\t';
-    dataToPrint += String(dist) + "  \t" + String(angle_q6);
+//    String dataToPrint = String(millis()) + '\t';
+//    dataToPrint += String(dist) + "  \t" + String(angle_q6);
 //    dataToPrint += '\t' + String(lidarPtr->packetCount) + '\t' + String(lidarPtr->rotationCount);
 //    dataToPrint += '\t' + String(newRotFlag) + '\t' + String(quality);
 //    dataToPrint += '\t' + String(lidarPtr->rawAnglePerMillisecond()) + '\t' + String(lidarPtr->RPM());
-    Serial.println(dataToPrint);
-  }
+   // Serial.println(dataToPrint);
+//  }
 }
 // --------------------------------------------------------------
 
@@ -311,11 +307,11 @@ void setup()
   lidar.init(16, 17);
   lidar.postParseCallback = dataHandler; // set dat handler function
 
-  lidar.printLidarInfo();
+  //lidar.printLidarInfo();
 //  lidar.printLidarHealth();
 //  lidar.printLidarSamplerate();
 //  lidar.printLidarConfig();
-  Serial.println();
+ // Serial.println();
 
   if(!lidar.connectionCheck()) { Serial.println("connectionCheck() failed");}
 
@@ -335,7 +331,38 @@ void setup()
   delay(1000); 
 }
 
+void stop_motors()
+{
+  disable_motors();
+  drive_or_turn = 0;
+  setPoint = 0; // Disable motors 
+  
+  left_speed(0,1);
+  right_speed(0,1);
 
+  Serial.println("motors stopped");
+}
+
+void start_motors()
+{
+  enable_motors();
+  //drive_or_turn = 1;  
+
+  Serial.println("start motors");
+}
+
+void turn_to_angle(int angle)
+{
+  // clear encoder angle counters
+  angle_count_lm = 0;
+  angle_count_rm = 0;
+
+  delay(2000);
+
+  lm_direction = -1;
+
+  drive_or_turn = 2;
+}
 
 
 void loop()
@@ -348,31 +375,47 @@ void loop()
     // waitForChecksum (only applies to express scans) means whether you wait for the whole packet to come, or to process data as it comes in (checksum is still checked when the whole packet is there, but the bad data may have already been sent to the callback)
     //    extraSpeedTimer = micros() - extraSpeedTimer;
     //    if(extraSpeedTimer > 40) { Serial.println(extraSpeedTimer); }
-
+    
     if(datapointsProcessed < 0) { keepSpinning = false; lidar.stopScan(); } // handleData() returns -1 if it encounters an error
-    //if(lidar.packetCount >= 200) { keepSpinning = false; lidar.stopScan(); }  // stop scanning after a while
+    //if(lidar.packetCount >= 200) { keepSpinning = false; lidar.stopScan(); }  // stop scanning after a whil
+
+  
   } else {
     motorHandler.setPWM(0);
   }
   // -----------------------------------------
+  
+                                                  //-- about 5cm away from the target from the edge of the roomba
+  if ((*angle_p > 39 && *angle_p < 141) && *dist_p <= 230 && *dist_p >= 180 && turn_count == 0) // If threshold met in relevent cone
+  {
+    stop_motors();
+    
+    turn_to_angle(180);
 
-  if ((*angle_p > 30 && *angle_p < 150) && *dist_p <= 400) // If threshold met in relevent cone
-    {
-      drive_or_turn = 0;
-      setPoint = 0; // Disable motors 
-      PID_control_lm(lm_direction);
-      PID_control_rm(rm_direction);
-      disable_motors();
-      delay(5000);      // Wait 2 seconds 
-      enable_motors();
-      drive_or_turn = 1;
-      
-     // setPoint = 120; // Enable motors
-    //Serial.println("Hello");
-    }
-//
+    
+    start_motors();
+    
+    turn_count++;
+  }
+  Serial.print(" Dist:  ");
+  Serial.println(*dist_p);
+  if (angle_count_rm >= 180*17.5 || angle_count_lm >= 180*17.5)
+  {
+   // stop_motors();
+
+    lm_direction = 1;
+
+//  delay(1000);
+    Serial.println("Reset tc");
+    turn_count = 0; 
+//  start_motors();
+    
+    drive_or_turn = 1;
+    angle_count_rm = 0;
+    angle_count_lm = 0;
+    
+  }
+
   PID_control_lm(lm_direction);
   PID_control_rm(rm_direction);
-//  Serial.println("zane burped");
-//  delay(10);      // Wait 1 millisecond
 }
