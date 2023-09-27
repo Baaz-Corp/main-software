@@ -45,6 +45,9 @@ float angleDegreesFloat = 0;
 //float *dist_p = &distFloat;
 //float *angle_p = &angleDegreesFloat;
 
+int distTemp = 0;
+float angleTemp = 0;
+
 int *dist_p = &distFloat;
 float *angle_p = &angleDegreesFloat;
 // -----------------------------------------
@@ -316,10 +319,10 @@ void setup()
   if(!lidar.connectionCheck()) { Serial.println("connectionCheck() failed");}
 
   delay(10);
-  motorHandler.setPWM(200);
-  //bool startSuccess = lidar.startStandardScan();
-  //bool startSuccess = lidar.startExpressScan(EXPRESS_SCAN_WORKING_MODE_LEGACY);
-  bool startSuccess = lidar.startExpressScan(EXPRESS_SCAN_WORKING_MODE_BOOST);
+  motorHandler.setPWM(140);
+//  bool startSuccess = lidar.startStandardScan();
+  bool startSuccess = lidar.startExpressScan(EXPRESS_SCAN_WORKING_MODE_LEGACY);
+//  bool startSuccess = lidar.startExpressScan(EXPRESS_SCAN_WORKING_MODE_BOOST);
 //  Serial.print("startSuccess: "); Serial.println(startSuccess);
   // -----------------------------------------
 
@@ -377,45 +380,53 @@ void loop()
     //    if(extraSpeedTimer > 40) { Serial.println(extraSpeedTimer); }
     
     if(datapointsProcessed < 0) { keepSpinning = false; lidar.stopScan(); } // handleData() returns -1 if it encounters an error
-    //if(lidar.packetCount >= 200) { keepSpinning = false; lidar.stopScan(); }  // stop scanning after a whil
-
-  
-  } else {
+    //if(lidar.packetCount >= 200) { keepSpinning = false; lidar.stopScan(); }  // stop scanning after a while
+    
+   } else {
     motorHandler.setPWM(0);
   }
   // -----------------------------------------
   
-                                                  //-- about 5cm away from the target from the edge of the roomba
   if ((*angle_p > 39 && *angle_p < 141) && *dist_p <= 230 && *dist_p >= 180 && turn_count == 0) // If threshold met in relevent cone
-  {
-    stop_motors();
-    
-    turn_to_angle(180);
+    {
+      if(distTemp != distFloat && angleTemp != angleDegreesFloat)
+      {
+      distTemp = distFloat;
+      angleTemp = angleDegreesFloat;
+      
+      stop_motors();
+      turn_to_angle(120);    
+      start_motors();
+      
+      turn_count++;
 
+    Serial.print(" Ang:  ");
+    Serial.println(*angle_p, 1);
     
-    start_motors();
-    
-    turn_count++;
-  }
-  Serial.print(" Dist:  ");
-  Serial.println(*dist_p);
-  if (angle_count_rm >= 180*17.5 || angle_count_lm >= 180*17.5)
-  {
-   // stop_motors();
+    Serial.print(" Dist:  ");
+    Serial.println(*dist_p);
+    Serial.println();
+      }
+    }
 
-    lm_direction = 1;
+    if (angle_count_rm >= 180*17.5 || angle_count_lm >= 180*17.5)
+    {
+     // stop_motors();
+  
+      lm_direction = 1;
+  
+  //  delay(1000);
+      Serial.println("Reset tc");
+      turn_count = 0; 
+  //  start_motors();
+      
+      drive_or_turn = 1;
+      angle_count_rm = 0;
+      angle_count_lm = 0;     
+    }
+  
+    PID_control_lm(lm_direction);
+    PID_control_rm(rm_direction);
+  
 
-//  delay(1000);
-    Serial.println("Reset tc");
-    turn_count = 0; 
-//  start_motors();
-    
-    drive_or_turn = 1;
-    angle_count_rm = 0;
-    angle_count_lm = 0;
-    
-  }
-
-  PID_control_lm(lm_direction);
-  PID_control_rm(rm_direction);
 }
