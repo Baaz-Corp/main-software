@@ -157,11 +157,12 @@ void left_speed(int speed_, int dir_) {
   if (dir_ == 1) {
     analogWrite(LM_F, speed_);
     digitalWrite(LM_R, 0);
-    Serial.println("hi");
+    digitalWrite(LM_F, 1);
   }
   if (dir_ == -1) {
     analogWrite(LM_R, speed_);
     digitalWrite(LM_F, 0);
+    digitalWrite(LM_R, 1);
   }
 }
 
@@ -170,10 +171,12 @@ void right_speed(int speed_, int dir_) {
   if (dir_ == 1) {
     analogWrite(RM_F, speed_);
     digitalWrite(RM_R, 0);
+    digitalWrite(RM_F, 1);
   }
   if (dir_ == -1) {
     analogWrite(RM_R, speed_);
     digitalWrite(RM_F, 0);
+    digitalWrite(RM_R, 1);
   }
 }
 
@@ -336,7 +339,7 @@ void setup()
 
 void stop_motors()
 {
-  disable_motors();
+  //disable_motors();
   drive_or_turn = 0;
   setPoint = 0; // Disable motors 
   
@@ -354,19 +357,37 @@ void start_motors()
   Serial.println("start motors");
 }
 
-void turn_to_angle(int angle)
+void turn_to_angle()
 {
   // clear encoder angle counters
-  angle_count_lm = 0;
-  angle_count_rm = 0;
-
-  delay(2000);
-
-  lm_direction = -1;
-
-  drive_or_turn = 2;
+  if(angle_count_rm == 17.5*180)
+  {
+    stop_motors();
+    delay(5000);
+    //drive_or_turn = 1;
+    rm_direction = 1;
+    
+  }
 }
 
+void stop_then_turn()
+{
+  if ((*angle_p > 39 && *angle_p < 141) && *dist_p <= 230 && *dist_p >= 180 && turn_count == 0) // If threshold met in relevent cone
+  {
+    stop_motors();
+
+    turn_count = 1;
+
+    angle_count_lm = 0;
+    angle_count_rm = 0;
+
+    //rm_direction = -1;
+    drive_or_turn = 2;
+
+    left_speed(100, 1);
+    right_speed(100, -1);
+  }
+}
 
 void loop()
 {
@@ -387,46 +408,18 @@ void loop()
   }
   // -----------------------------------------
   
-  if ((*angle_p > 39 && *angle_p < 141) && *dist_p <= 230 && *dist_p >= 180 && turn_count == 0) // If threshold met in relevent cone
-    {
-      if(distTemp != distFloat && angleTemp != angleDegreesFloat)
-      {
-      distTemp = distFloat;
-      angleTemp = angleDegreesFloat;
-      
-      stop_motors();
-      turn_to_angle(120);    
-      start_motors();
-      
-      turn_count++;
 
-    Serial.print(" Ang:  ");
-    Serial.println(*angle_p, 1);
-    
-    Serial.print(" Dist:  ");
-    Serial.println(*dist_p);
-    Serial.println();
-      }
-    }
 
-    if (angle_count_rm >= 180*17.5 || angle_count_lm >= 180*17.5)
+    stop_then_turn();
+
+    if (turn_count == 1)
     {
-     // stop_motors();
-  
-      lm_direction = 1;
-  
-  //  delay(1000);
-      Serial.println("Reset tc");
-      turn_count = 0; 
-  //  start_motors();
-      
-      drive_or_turn = 1;
-      angle_count_rm = 0;
-      angle_count_lm = 0;     
+      turn_to_angle();  
     }
-  
-    PID_control_lm(lm_direction);
-    PID_control_rm(rm_direction);
-  
+    if(drive_or_turn == 1 || drive_or_turn == 0)
+    {
+      PID_control_lm(lm_direction);
+      PID_control_rm(rm_direction);
+    }
 
 }
