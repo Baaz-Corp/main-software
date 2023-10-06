@@ -6,7 +6,6 @@
 int setPoint = 0;
 int max_set = 120;
 
-
 int rm_motor_set = setPoint;
 int lm_motor_set = setPoint;
 
@@ -50,12 +49,12 @@ float angleTemp = 0;
 
 int *dist_p = &distFloat;
 float *angle_p = &angleDegreesFloat;
+float prev_dist = 0;
 // -----------------------------------------
 
 //-- Stopping using PID
 int wait_360 = 0;   //-- checks around before move forward
 int turn_count = 0;
-
 
 int drive_or_turn = 1;  // 0 nothing, 1 drive, 2 turn
 
@@ -346,7 +345,7 @@ void stop_motors()
   left_speed(0,1);
   right_speed(0,1);
 
-  Serial.println("motors stopped");
+  //Serial.println("motors stopped");
 }
 
 void start_motors()
@@ -354,19 +353,21 @@ void start_motors()
   enable_motors();
   //drive_or_turn = 1;  
 
-  Serial.println("start motors");
+ // Serial.println("start motors");
 }
 
-void turn_to_angle()
+void turn_to_angle(int angle)
 {
   // clear encoder angle counters
-  if(angle_count_rm == 17.5*180)
+  if(angle_count_rm >= 16.9*angle)
   {
-    stop_motors();
-    delay(5000);
-    //drive_or_turn = 1;
-    rm_direction = 1;
+    right_speed(0, -1);
     
+    stop_motors();
+
+    drive_or_turn = 1;
+
+    turn_count = 0;
   }
 }
 
@@ -375,13 +376,11 @@ void stop_then_turn()
   if ((*angle_p > 39 && *angle_p < 141) && *dist_p <= 230 && *dist_p >= 180 && turn_count == 0) // If threshold met in relevent cone
   {
     stop_motors();
-
     turn_count = 1;
 
     angle_count_lm = 0;
     angle_count_rm = 0;
 
-    //rm_direction = -1;
     drive_or_turn = 2;
 
     left_speed(100, 1);
@@ -414,7 +413,7 @@ void loop()
 
     if (turn_count == 1)
     {
-      turn_to_angle();  
+      turn_to_angle(180);  
     }
     if(drive_or_turn == 1 || drive_or_turn == 0)
     {
@@ -422,4 +421,24 @@ void loop()
       PID_control_rm(rm_direction);
     }
 
+}
+
+class transverse_space
+{
+  int grid_step_over = 350; //-- diameter of the roomba
+
+  bool visable_boundary[36][36] = {};
+
+  int raw_linear_data[360][2] = {};
+
+  void establish_graph_boundaries(int in[360][2]) {
+    
+  }
+
+  //-- as the roomba navigates around the 0 position will change. this means that data fed into the array will be all wrong.    
+  
+  void find_best_path() {
+    
+  }
+    
 }
