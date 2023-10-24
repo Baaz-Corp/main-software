@@ -67,7 +67,7 @@ struct lidarMotorHandler {  // not really needed (and (currently) very ESP32-bou
   inline void setPWM(uint8_t newPWMval) {ledcWrite(channel, activeHigh ? newPWMval : (255-newPWMval));}
 };
 
-lidarMotorHandler motorHandler(27);
+lidarMotorHandler motorHandler(13);
 RPlidar lidar(Serial2);
 
 bool keepSpinning = true;
@@ -274,6 +274,8 @@ void devPageBluetooth()
     if(dataIn[4] == 1) turnEnable = 1;
     angle = dataIn[5];
     Serial.println(angle);
+
+    //ANGUS ADD CODE TO INTERPRET X AND Y AND DRIVE IT
   }
 }
 
