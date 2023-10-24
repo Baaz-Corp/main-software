@@ -11,6 +11,13 @@
 BluetoothSerial ESP_BT;
 Adafruit_SGP40 sgp;
 
+//-- Defining Motor Driver Outputs
+#define G5 19 //-- In1 FOWARDS OUT1/2 left
+#define G18 33 //-- In4 FOWARDS OUT3/4 right
+
+#define G4 18 //-- In2 BACKWARDS OUT1/2
+#define G15 32 //-- In3 BACKWARDS OUT3/4
+
 //Pin Assignments\\
 //Ultrasonic
 const int trigPin = 5;
@@ -131,6 +138,10 @@ int turnEnable;
 int pageOpen;
 //define sound speed in cm/uS
 #define SOUND_SPEED 0.034
+float ySpeed = 0;
+float xSpeed = 0;
+int direction_flag = 1;
+int turn_flag = 1;
 
 //Function prototypes
 float readUltrasonic(void);
@@ -371,7 +382,7 @@ void dataHandler(RPlidar* lidarPtr, uint16_t dist, uint16_t angle_q6, uint8_t ne
 void setup() 
 {
   Serial.begin(115200); // Starts the serial communication
-  ESP_BT.begin("BlakeH"); // Enable bluetooth with naming
+  ESP_BT.begin("BlakeHar"); // Enable bluetooth with naming
 
   //Set pinmodes
   pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
@@ -521,24 +532,22 @@ void connectPageBluetooth() //Whats happening on the connect page
         //if(lidar.packetCount >= 200) { keepSpinning = false; lidar.stopScan(); }  // stop scanning after a while
     
         } 
-      else 
-      {
-        motorHandler.setPWM(0);
-      }
+        else 
+        {
+          motorHandler.setPWM(0);
+        }
       // -----------------------------------------
-      stop_then_turn();
-      if (turn_count == 1)
-      {
-        turn_to_angle(180);  
+        stop_then_turn();
+        if (turn_count == 1)
+        {
+          turn_to_angle(180);  
+        }
+        if(drive_or_turn == 1 || drive_or_turn == 0)
+        {
+          PID_control_lm(lm_direction);
+          PID_control_rm(rm_direction);
+        }
       }
-      if(drive_or_turn == 1 || drive_or_turn == 0)
-      {
-        PID_control_lm(lm_direction);
-        PID_control_rm(rm_direction);
-      }
-
-
-    }
     }
      
     else if(Incoming_value == 6) //Stop cleaning has been pressed
@@ -570,13 +579,13 @@ void mappingPageBluetooth()
   bool carryOn = true;
   while(carryOn) // change to not equal to different page value
   {
-  //  Incoming_value = ESP_BT.read(); //Read what we receive 
-   // if(Incoming_value == 4 || Incoming_value == 3 || Incoming_value == 2)
-  //  {
-   //   pageOpen = Incoming_value;
-   //   carryOn = false;
-   // } 
-
+    Incoming_value = ESP_BT.read(); //Read what we receive 
+    if(Incoming_value == 4 || Incoming_value == 3 || Incoming_value == 2)
+    {
+      pageOpen = Incoming_value;
+      carryOn = false;
+    } 
+    while(1){
     // LIDAR STUFF ---------------------------------------------------------------------------------------------------
     //  if(Serial.available()) { lidar.lidarSerial.write(Serial.read()); }
     //  if(lidar.lidarSerial.available()) { Serial.write(lidar.lidarSerial.read()); }
@@ -598,7 +607,7 @@ void mappingPageBluetooth()
     {
       motorHandler.setPWM(0);
     }
-    
+    }
   }
 }
 
@@ -609,19 +618,92 @@ void devPageBluetooth()
     if (ESP_BT.available()) 
     {
       Incoming_value = ESP_BT.read(); //Read what we receive 
-      if(Incoming_value == (255)) array_index = 0;
+      if(Incoming_value == (255)) array_index = 0 ;
       dataIn[array_index] = Incoming_value;
       array_index += 1;
     }
     //Setting x and y data for interpretation 
-    joystickEnable = dataIn[1];
-    joystickX = dataIn[2]; 
-    joystickY = dataIn[3];
-    if(dataIn[4] == 1) turnEnable = 1;
-    angle = dataIn[5];
-    Serial.println(angle);
+    joystickX = dataIn[1]; 
+    joystickY = dataIn[2];
 
-    //ANGUS ADD CODE TO INTERPRET X AND Y AND DRIVE IT
+    Serial.print("Joystick x: ");
+    Serial.print(joystickX);
+    Serial.print(" Joystick y: ");
+    Serial.println(joystickY);
+
+    if (joystickY > 140) 
+    {
+      direction_flag = 1; //-- 1 is backwards
+      int absoluteY = abs(125-joystickY);
+      //ySpeed = map(absoluteY, 0, 125, 170, 255);
+      ySpeed = absoluteY;
+      //ySpeed = 200+((joystickY-1)/250)*55; //-- May have int problems here
+    }  
+    else if (joystickY < 110) 
+    {
+      direction_flag = 0;
+      int absoluteY = abs(125-joystickY);
+      //ySpeed = map(absoluteY, 0, 125, 200, 255);
+      ySpeed = absoluteY;
+      //ySpeed = 255+((-joystickY+1)/125)*55;
+    } 
+    else 
+    {
+    ySpeed = 0;
+    }
+    
+    //x representation
+    if (joystickX > 140) 
+    {
+      turn_flag = 1; //-- 1 is right
+      int absoluteX = abs(125-joystickX);
+      xSpeed = map(absoluteX, 0, 125, 170, 255);
+    }  
+    else if (joystickX < 110) 
+    {
+      turn_flag = 0; //0 is left
+      int absoluteX = abs(125-joystickX);
+      xSpeed = map(absoluteX, 0, 125, 200, 255);
+    } 
+    else 
+    {
+    xSpeed = ySpeed;
+    }
+
+    Serial.print("Xspeed: ");
+    Serial.print(xSpeed);
+    Serial.print(" Yspeed: ");
+    Serial.println(ySpeed);
+
+    if (direction_flag == 1 && turn_flag == 0) //forward, left bias
+    {
+      analogWrite(G4, xSpeed); //left motor
+      analogWrite(G5, LOW);     //left motor
+      analogWrite(G18, LOW);    //right motor
+      analogWrite(G15, ySpeed); //right motor
+    } 
+    else if (direction_flag == 1 && turn_flag == 1) //forward, right bias
+    {
+      analogWrite(G4, ySpeed); //left motor
+      analogWrite(G5, LOW);     //left motor
+      analogWrite(G18, LOW);    //right motor
+      analogWrite(G15, xSpeed); //right motor
+    }
+
+    else if (direction_flag == 0 && turn_flag == 0) //backward, left bias
+    {
+      analogWrite(G4, LOW);
+      analogWrite(G5, xSpeed);
+      analogWrite(G18, ySpeed);
+      analogWrite(G15, LOW);
+    }
+    else if (direction_flag == 0 && turn_flag == 1) //backward, right bias
+    {
+      analogWrite(G4, LOW);
+      analogWrite(G5, ySpeed);
+      analogWrite(G18, xSpeed);
+      analogWrite(G15, LOW);
+    }
   }
 }
 
