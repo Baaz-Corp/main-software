@@ -102,7 +102,7 @@ void dataHandler(RPlidar* lidarPtr, uint16_t dist, uint16_t angle_q6, uint8_t ne
   //    sendLidarBT(dist, angleDegreesFloat); // Send polar coordinates to app
     switch (dataTrim)
     {
-      case 0:         dist_use = distFloat/48;
+      case 2:         dist_use = distFloat/48;
                       if (dist_use > 125) dist_use = 125;  
                       polarToCart(dist_use, angleDegreesFloat);       // Convert to cartesian
 //                    Serial.print("dist ");
