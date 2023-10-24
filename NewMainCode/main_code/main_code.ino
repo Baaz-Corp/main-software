@@ -517,8 +517,15 @@ void connectPageBluetooth() //Whats happening on the connect page
     else if(Incoming_value == 5) //Start cleaning has been pressed ANGUS CODE FOR CLEANING
     {
       Serial.println("cleaning starting");
-      while(1)
+      while(carryOn)
       {
+        Incoming_value = ESP_BT.read(); //Read what we receive 
+        if(Incoming_value == 6) carryOn = false;
+
+        /////////////////////
+        //ANGUS STUFF HERE///
+        /////////////////////
+
           // Lidar stuff -----------------------------
         if(keepSpinning) {
         uint32_t extraSpeedTimer = micros();
@@ -547,6 +554,9 @@ void connectPageBluetooth() //Whats happening on the connect page
           PID_control_lm(lm_direction);
           PID_control_rm(rm_direction);
         }
+        //////////////////////
+        //ANGUS FINISH HERE///
+        //////////////////////
       }
     }
      
