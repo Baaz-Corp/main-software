@@ -531,36 +531,8 @@ void connectPageBluetooth() //Whats happening on the connect page
       { 
         readVOCIndex();
         sendBluetooth('A', voc_index);
+        while())
 
-        // Moving forward
-        if (drive_or_turn == 1)
-        {
-          MOVE_ROOMBA();
-        }
-        
-        // If wall is in front -> stop then set turning direction and speed
-        if ((*angle_p > 39 && *angle_p < 141) && *dist_p <= 250 && *dist_p >= 180 && turning == 0)
-        {
-          stop_motors();  
-          drive_or_turn = 0;
-          turning = 1;
-          angle_count_lm = 0;
-          angle_count_rm = 0;
-          drive_or_turn = 2;
-          left_speed(100, 1);
-          right_speed(100, -1);
-        }
-
-        // turning to 90deg right
-        if (turning == 1 && angle_count_rm >= 16.9*91)
-        {
-          right_speed(0, -1);
-          right_speed(0,1);
-          left_speed(0,1);
-          drive_or_turn = 1;
-          turning = 0;
-          //-- do adam we need to 
-        }
 
       }
     }
