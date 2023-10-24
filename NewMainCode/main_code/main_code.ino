@@ -83,6 +83,7 @@ int wait_360 = 0;   //-- checks around before move forward
 int turn_count = 0;
 
 int drive_or_turn = 1;  // 0 nothing, 1 drive, 2 turn
+int turning = 0;
 
 //  Turning
 int lm_direction = 1;   // 1 forward, -1 reverse
@@ -123,6 +124,7 @@ hw_timer_t *Timer0_Cfg = NULL;
 int Incoming_value;             //Incoming byte
 int dataIn[7] = {0,0,0,0,0,0,0};      //Array to split the bytes 
 int array_index = 0;            //Indexing through array
+int turnDirection = 0;
 int joystickEnable, joystickX, joystickY;       //X and Y position of the joystick
 float ultrasonicDistance;
 int32_t voc_index;
@@ -501,6 +503,14 @@ void stop_then_turn()
   }
 }
 
+void MOVE_ROOMBA(void) {
+    if(drive_or_turn == 1 || drive_or_turn == 0)
+    {
+      PID_control_lm(lm_direction);
+      PID_control_rm(rm_direction);
+    }
+}
+
 void connectPageBluetooth() //Whats happening on the connect page
 {
   bool carryOn = true;
@@ -517,46 +527,39 @@ void connectPageBluetooth() //Whats happening on the connect page
     else if(Incoming_value == 5) //Start cleaning has been pressed ANGUS CODE FOR CLEANING
     {
       Serial.println("cleaning starting");
-      while(carryOn)
-      {
-        Incoming_value = ESP_BT.read(); //Read what we receive 
-        if(Incoming_value == 6) carryOn = false;
+      while(1)
+      { 
+        
+        // Moving forward
+        if (drive_or_turn == 1)
+        {
+          MOVE_ROOMBA();
+        }
+        
+        // If wall is in front -> stop then set turning direction and speed
+        if ((*angle_p > 39 && *angle_p < 141) && *dist_p <= 250 && *dist_p >= 180 && turning == 0)
+        {
+          stop_motors();  
+          drive_or_turn = 0;
+          turning = 1;
+          angle_count_lm = 0;
+          angle_count_rm = 0;
+          drive_or_turn = 2;
+          left_speed(100, 1);
+          right_speed(100, -1);
+        }
 
-        /////////////////////
-        //ANGUS STUFF HERE///
-        /////////////////////
+        // turning to 90deg right
+        if (turning == 1 && angle_count_rm >= 16.9*91)
+        {
+          right_speed(0, -1);
+          right_speed(0,1);
+          left_speed(0,1);
+          drive_or_turn = 1;
+          turning = 0;
+          //-- do adam we need to 
+        }
 
-          // Lidar stuff -----------------------------
-        if(keepSpinning) {
-        uint32_t extraSpeedTimer = micros();
-        int8_t datapointsProcessed = lidar.handleData(false, false); // read lidar data and send it to the callback function. Parameters are: (includeInvalidMeasurements, waitForChecksum)
-        // includeInvalidMeasurements means sending data where the measurement failed (out of range or too close or bad surface, etc. it's when distance == 0)
-        // waitForChecksum (only applies to express scans) means whether you wait for the whole packet to come, or to process data as it comes in (checksum is still checked when the whole packet is there, but the bad data may have already been sent to the callback)
-        //    extraSpeedTimer = micros() - extraSpeedTimer;
-        //    if(extraSpeedTimer > 40) { Serial.println(extraSpeedTimer); }
-    
-        if(datapointsProcessed < 0) { keepSpinning = false; lidar.stopScan(); } // handleData() returns -1 if it encounters an error
-        //if(lidar.packetCount >= 200) { keepSpinning = false; lidar.stopScan(); }  // stop scanning after a while
-    
-        } 
-        else 
-        {
-          motorHandler.setPWM(0);
-        }
-      // -----------------------------------------
-        stop_then_turn();
-        if (turn_count == 1)
-        {
-          turn_to_angle(180);  
-        }
-        if(drive_or_turn == 1 || drive_or_turn == 0)
-        {
-          PID_control_lm(lm_direction);
-          PID_control_rm(rm_direction);
-        }
-        //////////////////////
-        //ANGUS FINISH HERE///
-        //////////////////////
       }
     }
      
