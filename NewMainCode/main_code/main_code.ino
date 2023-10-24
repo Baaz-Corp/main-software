@@ -520,22 +520,22 @@ void connectPageBluetooth() //Whats happening on the connect page
         if(datapointsProcessed < 0) { keepSpinning = false; lidar.stopScan(); } // handleData() returns -1 if it encounters an error
         //if(lidar.packetCount >= 200) { keepSpinning = false; lidar.stopScan(); }  // stop scanning after a while
     
-      } 
-    else 
-    {
-      motorHandler.setPWM(0);
-    }
-    // -----------------------------------------
-    stop_then_turn();
-    if (turn_count == 1)
-    {
-      turn_to_angle(180);  
-    }
-    if(drive_or_turn == 1 || drive_or_turn == 0)
-    {
-      PID_control_lm(lm_direction);
-      PID_control_rm(rm_direction);
-    }
+        } 
+      else 
+      {
+        motorHandler.setPWM(0);
+      }
+      // -----------------------------------------
+      stop_then_turn();
+      if (turn_count == 1)
+      {
+        turn_to_angle(180);  
+      }
+      if(drive_or_turn == 1 || drive_or_turn == 0)
+      {
+        PID_control_lm(lm_direction);
+        PID_control_rm(rm_direction);
+      }
 
 
     }
@@ -584,7 +584,6 @@ void mappingPageBluetooth()
   
     if(keepSpinning) 
     {
-      Serial.println("mapping");
       uint32_t extraSpeedTimer = micros();
       int8_t datapointsProcessed = lidar.handleData(false, false); // read lidar data and send it to the callback function. Parameters are: (includeInvalidMeasurements, waitForChecksum)
       // includeInvalidMeasurements means sending data where the measurement failed (out of range or too close or bad surface, etc. it's when distance == 0)
@@ -599,6 +598,7 @@ void mappingPageBluetooth()
     {
       motorHandler.setPWM(0);
     }
+    
   }
 }
 
