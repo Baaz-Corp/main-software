@@ -503,7 +503,7 @@ void connectPageBluetooth() //Whats happening on the connect page
       pageOpen = Incoming_value;
       carryOn = false;
     } 
-    else if(Incoming_value == 5) //Start cleaning has been pressed
+    else if(Incoming_value == 5) //Start cleaning has been pressed ANGUS CODE FOR CLEANING
     {
       Serial.println("cleaning starting");
       while(1)
@@ -584,6 +584,7 @@ void mappingPageBluetooth()
   
     if(keepSpinning) 
     {
+      Serial.println("mapping");
       uint32_t extraSpeedTimer = micros();
       int8_t datapointsProcessed = lidar.handleData(false, false); // read lidar data and send it to the callback function. Parameters are: (includeInvalidMeasurements, waitForChecksum)
       // includeInvalidMeasurements means sending data where the measurement failed (out of range or too close or bad surface, etc. it's when distance == 0)
