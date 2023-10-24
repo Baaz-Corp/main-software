@@ -202,15 +202,12 @@ void connectPageBluetooth() //Whats happening on the connect page
     }
     readVOCIndex();
     sendBluetooth('A', voc_index);
-    Serial.print("VOC_INDEX: ");
-    Serial.println(voc_index);
     x += 1;
     if(x == 50)
     {
       batteryPercentage -= 1;
       if(batteryPercentage == 1) batteryPercentage = 100;
       sendBluetooth('B', batteryPercentage);
-      Serial.print("Battery Percentage: ");
       //Serial.println(batteryPercentage);
     }
         if(x == 70)
@@ -218,8 +215,6 @@ void connectPageBluetooth() //Whats happening on the connect page
       storagePercentage += 1;
       if(storagePercentage == 100) storagePercentage = 1;
       sendBluetooth('C', storagePercentage);
-      Serial.print("Storage Percentage: ");
-      Serial.println(storagePercentage);
       x = 0;
     }
   }
