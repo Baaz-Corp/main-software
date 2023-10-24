@@ -637,6 +637,8 @@ void devPageBluetooth()
       int absoluteY = abs(125-joystickY);
       //ySpeed = map(absoluteY, 0, 125, 170, 255);
       ySpeed = absoluteY;
+
+      if (joystickX < 140 && joystickX > 110) ySpeed = map(absoluteY, 0, 125, 170, 255);
       //ySpeed = 200+((joystickY-1)/250)*55; //-- May have int problems here
     }  
     else if (joystickY < 110) 
@@ -645,6 +647,7 @@ void devPageBluetooth()
       int absoluteY = abs(125-joystickY);
       //ySpeed = map(absoluteY, 0, 125, 200, 255);
       ySpeed = absoluteY;
+      if (joystickX < 140 && joystickX > 110) ySpeed = map(absoluteY, 0, 125, 170, 255);
       //ySpeed = 255+((-joystickY+1)/125)*55;
     } 
     else 
@@ -675,14 +678,14 @@ void devPageBluetooth()
     Serial.print(" Yspeed: ");
     Serial.println(ySpeed);
 
-    if (direction_flag == 1 && turn_flag == 0) //forward, left bias
+    if (direction_flag == 1 && turn_flag == 1) //forward, left bias
     {
       analogWrite(G4, xSpeed); //left motor
       analogWrite(G5, LOW);     //left motor
       analogWrite(G18, LOW);    //right motor
       analogWrite(G15, ySpeed); //right motor
     } 
-    else if (direction_flag == 1 && turn_flag == 1) //forward, right bias
+    else if (direction_flag == 1 && turn_flag == 0) //forward, right bias
     {
       analogWrite(G4, ySpeed); //left motor
       analogWrite(G5, LOW);     //left motor
@@ -690,14 +693,14 @@ void devPageBluetooth()
       analogWrite(G15, xSpeed); //right motor
     }
 
-    else if (direction_flag == 0 && turn_flag == 0) //backward, left bias
+    else if (direction_flag == 0 && turn_flag == 1) //backward, left bias
     {
       analogWrite(G4, LOW);
       analogWrite(G5, xSpeed);
       analogWrite(G18, ySpeed);
       analogWrite(G15, LOW);
     }
-    else if (direction_flag == 0 && turn_flag == 1) //backward, right bias
+    else if (direction_flag == 0 && turn_flag == 0) //backward, right bias
     {
       analogWrite(G4, LOW);
       analogWrite(G5, ySpeed);
