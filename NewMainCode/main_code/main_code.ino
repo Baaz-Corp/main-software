@@ -529,7 +529,9 @@ void connectPageBluetooth() //Whats happening on the connect page
       Serial.println("cleaning starting");
       while(1)
       { 
-        
+        readVOCIndex();
+        sendBluetooth('A', voc_index);
+
         // Moving forward
         if (drive_or_turn == 1)
         {
